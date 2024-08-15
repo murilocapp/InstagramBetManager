@@ -28,7 +28,6 @@ pip install instaloader pandas unidecode getpass
 ### Clone o repositório:
 
 ```bash
-Copiar código
 git clone https://github.com/murilocapp/InstagramBetManager.git
 cd InstagramBetManager
 ```
