@@ -1,94 +1,128 @@
 # InstagramBetManager
 
-O **InstagramBetManager** é um bot desenvolvido em Python que utiliza a biblioteca `Instaloader` para coletar comentários de postagens no Instagram, extrair e validar apostas feitas nos comentários, e gerar uma tabela de classificação baseada nas apostas corretas.
+O **InstagramBetManager** é um bot desenvolvido em Python que utiliza a biblioteca `Instaloader` para coletar comentários de postagens no Instagram, extrair e validar apostas de resultados da Copa do Mundo, e gerar uma tabela de classificação baseada nos acertos.
 
 ## Funcionalidades
 
-- **Login no Instagram**: Solicita o nome de usuário e a senha para fazer login no Instagram.
-- **Coleta de Comentários**: Coleta os comentários das postagens especificadas em um arquivo CSV de entrada.
-- **Extração de Apostas**: Identifica e extrai as apostas feitas nos comentários com base em um padrão específico.
-- **Validação de Apostas**: Compara as apostas extraídas com os resultados esperados.
-- **Geração de Relatórios**: Gera arquivos CSV contendo todos os dados coletados, além de uma tabela de classificação com as pontuações dos usuários.
+- **Autenticação no Instagram**: Login via `getpass` — a senha nunca é exposta em argumentos de linha de comando.
+- **Coleta de comentários**: Itera sobre dias e shortcodes definidos no CSV de entrada, com salvamento automático de progresso em caso de erro.
+- **Extração de apostas**: Identifica o padrão `NxN Time` nos comentários (ex: `2x1 Brasil`). Quando não encontrado, usa o texto bruto como fallback.
+- **Validação de apostas**: Normaliza ambos os lados da comparação — remove acentos, converte para lowercase e separa números de texto — tornando a validação tolerante a variações como `2 x 1 brasil`, `2X1 BRASIL` ou `2x1Brasil`.
+- **Geração de relatórios**: Exporta comentários brutos, dados processados e leaderboard em CSV.
 
 ## Requisitos
 
-- Python 3.7 ou superior
-- As seguintes bibliotecas Python:
+- Python 3.10 ou superior
+- Dependências externas:
   - `instaloader`
   - `pandas`
   - `unidecode`
-  - `getpass`
 
-Você pode instalar essas dependências executando o seguinte comando:
+> `argparse`, `getpass`, `logging`, `re` e `pathlib` fazem parte da stdlib — não requerem instalação.
+
+Instale as dependências com:
 
 ```bash
-pip install instaloader pandas unidecode getpass
+pip install instaloader pandas unidecode
 ```
-## Como Usar
-### Clone o repositório:
+
+## Como usar
+
+### Clone o repositório
 
 ```bash
 git clone https://github.com/murilocapp/InstagramBetManager.git
 cd InstagramBetManager
 ```
-### Prepare o arquivo de entrada:
 
-Crie um arquivo CSV chamado input.csv com as seguintes colunas:
+### Prepare o arquivo de entrada
 
-- *shortcode*: O shortcode da postagem no Instagram.
-- *Day*: O dia correspondente àquela postagem.
-- *result*: O resultado esperado para a aposta (exemplo: "2x1 Brazil").
+Crie um arquivo CSV com as seguintes colunas:
 
-Exemplo de input.csv:
+| Coluna      | Descrição                                      | Exemplo        |
+|-------------|------------------------------------------------|----------------|
+| `shortcode` | Identificador do post no Instagram             | `CxYz123ABC`   |
+| `Day`       | Dia da rodada                                  | `1`            |
+| `result`    | Resultado esperado para comparação com apostas | `2x1 Brazil`   |
 
 ```csv
 shortcode,Day,result
-ABCD1234,1,2x1 Brazil
-WXYZ5678,1,3x0 Germany
+CxYz123ABC,1,2x1 Brazil
+WXYZ567800,1,3x0 Germany
+AbCd987654,2,1x1 Argentina
 ```
-### Execute o script:
 
-Você pode executar o bot de duas maneiras:
+### Execute o script
 
-- Via Script Python: Execute o script principal main.py para iniciar o bot.
+```bash
+python worldcup_bet_validator.py \
+    --input input.csv \
+    --output-dir ./output \
+    --username seu_usuario_instagram
+```
 
-  ```bash
-  python main.py
-  ```
-- Via Jupyter Notebook: Abra e execute o notebook InstagramBetManager.ipynb em um ambiente Jupyter. O notebook contém o mesmo código, mas é mais interativo e permite execução passo a passo.
+A senha será solicitada de forma segura via `getpass` após a execução do comando.
 
-O script e o notebook solicitarão seu nome de usuário e senha do Instagram para fazer o login.
+#### Parâmetros disponíveis
 
-## Monitoramento e Salvamento Automático:
+| Argumento      | Obrigatório | Descrição                               | Default |
+|----------------|-------------|-----------------------------------------|---------|
+| `--input`      | Sim         | Caminho para o CSV de entrada           | —       |
+| `--output-dir` | Não         | Diretório de saída para os CSVs gerados | `.`     |
+| `--username`   | Sim         | Usuário do Instagram para autenticação  | —       |
 
-O script processa todas as postagens especificadas e coleta os comentários. Em caso de erro, o progresso até o ponto do erro será salvo automaticamente em data_all_days_progress.csv.
+## Monitoramento e salvamento automático
 
-## Resultados:
+O script processa todos os posts especificados e coleta os comentários. Em caso de erro durante a coleta, o progresso acumulado até aquele ponto é salvo automaticamente em `progress.csv` dentro do `--output-dir` antes de encerrar.
 
-Após a execução bem-sucedida, os seguintes arquivos serão gerados:
+## Resultados
 
-- data_all_days.csv: Contém todos os comentários coletados e processados.
-- data.csv: Contém os dados finais, incluindo as apostas extraídas e os resultados validados.
-- leaderboard.csv: Contém a tabela de classificação dos usuários com base nas apostas corretas.
+Após execução bem-sucedida, os seguintes arquivos são gerados no diretório de saída:
+
+| Arquivo             | Descrição                                                  |
+|---------------------|------------------------------------------------------------|
+| `data_all_days.csv` | Comentários brutos coletados de todos os posts             |
+| `data.csv`          | Dados processados com colunas `bet` e `bet_result`         |
+| `leaderboard.csv`   | Ranking de usuários ordenado por número de acertos         |
+| `progress.csv`      | Progresso parcial — gerado apenas em caso de erro          |
 
 ## Estrutura do projeto
-```graphql
+
+```
 InstagramBetManager/
 │
-├── main.py                        # Script principal
-├── InstagramBetManager.ipynb       # Notebook Jupyter com o código principal
-├── input.csv                      # Arquivo de entrada com shortcodes e resultados esperados
-├── data_all_days.csv              # Dados coletados de todas as postagens
-├── data.csv                       # Dados finais após validação
-├── leaderboard.csv                # Tabela de classificação
-└── README.md                      # Este arquivo
+├── worldcup_bet_validator.py   # Script principal (CLI)
+├── input.csv                   # Arquivo de entrada com shortcodes e resultados esperados
+├── requirements.txt            # Dependências do projeto
+├── README.md                   # Este arquivo
+├── LICENSE
+│
+└── output/                     # Gerado automaticamente na execução
+    ├── data_all_days.csv
+    ├── data.csv
+    ├── leaderboard.csv
+    └── progress.csv
 ```
 
-## Considerações de Segurança
-Credenciais do Instagram: O script/notebook solicita suas credenciais do Instagram para fazer o login. Certifique-se de que suas credenciais estejam seguras e evite compartilhá-las com outras pessoas.
+## Considerações de segurança
+
+- A senha do Instagram **nunca** é passada como argumento — sempre solicitada via `getpass` em tempo de execução.
+- Não versione `input.csv` ou os arquivos de saída caso contenham dados de usuários — adicione-os ao `.gitignore`.
+
+`.gitignore` recomendado:
+
+```
+output/
+input.csv
+__pycache__/
+*.pyc
+.env
+```
 
 ## Contribuições
-Contribuições são bem-vindas! Sinta-se à vontade para abrir issues ou enviar pull requests.
+
+Contribuições são bem-vindas. Sinta-se à vontade para abrir issues ou enviar pull requests.
 
 ## Licença
-Este projeto é licenciado sob a [MIT License](https://github.com/murilocapp/InstagramBetManager/blob/main/LICENSE).
+
+Este projeto é licenciado sob a [MIT License](LICENSE).
